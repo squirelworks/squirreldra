@@ -1,0 +1,99 @@
+diff --git a/Ghidra/Features/Base/src/main/java/ghidra/app/util/bin/format/ne/EntryTable.java b/Ghidra/Features/Base/src/main/java/ghidra/app/util/bin/format/ne/EntryTable.java
+index 4cf6a23e..30de982f 100644
+--- a/Ghidra/Features/Base/src/main/java/ghidra/app/util/bin/format/ne/EntryTable.java
++++ b/Ghidra/Features/Base/src/main/java/ghidra/app/util/bin/format/ne/EntryTable.java
+@@ -39,7 +39,9 @@ public class EntryTable {
+         reader.setPointerIndex(index);
+ 
+         ArrayList<EntryTableBundle> list = new ArrayList<EntryTableBundle>();
+-        while (true) {
++        // Honor ne_cbenttab. Stock loader ignores byteCount and reads until count==0.
++        long end = index + Short.toUnsignedInt(byteCount);
++        while (reader.getPointerIndex() < end) {
+             EntryTableBundle etb = new EntryTableBundle(reader);
+             if (etb.getCount() == 0) break;
+             list.add(etb);
+diff --git a/Ghidra/Features/Base/src/main/java/ghidra/app/util/opinion/NeLoader.java b/Ghidra/Features/Base/src/main/java/ghidra/app/util/opinion/NeLoader.java
+index 8ca872f2..d8603ff1 100644
+--- a/Ghidra/Features/Base/src/main/java/ghidra/app/util/opinion/NeLoader.java
++++ b/Ghidra/Features/Base/src/main/java/ghidra/app/util/opinion/NeLoader.java
+@@ -580,7 +580,14 @@ public class NeLoader extends AbstractOrdinalSupportLoader {
+ 					log.appendMsg("NE - constant entry point...");
+ 				}
+ 				else {
+-					seg = st.getSegments()[bundle.getType() - 1].getSegmentID();
++					// type is a Java byte. Segment numbers 128-253 sign-extend
++					// and throw IndexOutOfBoundsException. Treat as unsigned.
++					int segmentIndex = Byte.toUnsignedInt(bundle.getType()) - 1;
++					if (segmentIndex < 0 || segmentIndex >= st.getSegments().length) {
++						log.appendMsg("Invalid segmentIndex " + segmentIndex);
++						continue;
++					}
++					seg = st.getSegments()[segmentIndex].getSegmentID();
+ 				}
+ 				int off = Short.toUnsignedInt(pt.getOffset());
+ 				Address addr = space.getAddress(seg, off);
+diff --git a/Ghidra/Processors/x86/data/languages/x86-16.cspec b/Ghidra/Processors/x86/data/languages/x86-16.cspec
+index f07cea0b..8d90e895 100644
+--- a/Ghidra/Processors/x86/data/languages/x86-16.cspec
++++ b/Ghidra/Processors/x86/data/languages/x86-16.cspec
+@@ -134,6 +134,59 @@
+       <register name="DF"/>
+     </unaffected>
+   </prototype>
++
++  <prototype name="__pascal16far" extrapop="unknown" stackshift="4">
++    <input>
++      <pentry minsize="1" maxsize="500" align="2">
++        <addr offset="4" space="stack"/>
++      </pentry>
++    </input>
++    <output>
++      <pentry minsize="1" maxsize="2">
++        <register name="AX"/>
++      </pentry>
++      <pentry minsize="3" maxsize="4">
++        <addr space="join" piece1="DX" piece2="AX"/>
++      </pentry>
++    </output>
++    <unaffected>
++      <register name="SP"/>
++      <register name="BP"/>
++      <register name="SI"/>
++      <register name="DI"/>
++      <register name="DS"/>
++      <register name="CS"/>
++      <register name="ES"/>
++      <register name="SS"/>
++      <register name="DF"/>
++    </unaffected>
++  </prototype>
++  <prototype name="__pascal16near" extrapop="unknown" stackshift="2">
++    <input>
++      <pentry minsize="1" maxsize="500" align="2">
++        <addr offset="2" space="stack"/>
++      </pentry>
++    </input>
++    <output>
++      <pentry minsize="1" maxsize="2">
++        <register name="AX"/>
++      </pentry>
++      <pentry minsize="3" maxsize="4">
++        <addr space="join" piece1="DX" piece2="AX"/>
++      </pentry>
++    </output>
++    <unaffected>
++      <register name="SP"/>
++      <register name="BP"/>
++      <register name="SI"/>
++      <register name="DI"/>
++      <register name="DS"/>
++      <register name="CS"/>
++      <register name="ES"/>
++      <register name="SS"/>
++      <register name="DF"/>
++    </unaffected>
++  </prototype>
+   <prototype name="__regcall" extrapop="2" stackshift="2">
+     <input>
+       <pentry minsize="1" maxsize="2">
