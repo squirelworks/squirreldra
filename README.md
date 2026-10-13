@@ -16,7 +16,8 @@ squirreldra/
 │   ├── lolcode/
 │   ├── piet/
 │   └── malbolge/
-└── documentation/          # living notes (includes debugging/)
+├── debugging/               # Win98/XP debugger notes and minidbg scaffold
+└── documentation/          # living notes
 ```
 
 ## Quick start
@@ -27,4 +28,4 @@ export GHIDRA_HOME=/path/to/ghidra
 ```
 
 Language-specific patches, scripts, and stubs live under `vanguards/`.
-Debugging notes for Win98/XP live under `documentation/debugging/`.
+Debugging notes for Win98/XP live under `debugging/`.
