@@ -1,6 +1,6 @@
 # Squirreldra Documentation
 
-Living notes for the ToolBook / Win16 analysis workflow built on Ghidra.
+Living notes for the ToolBook / Win16 analysis workflow built on Ghidra, plus related topics.
 
 This directory is updated as we learn more. Prefer adding new files or sections over rewriting history.
 
@@ -10,6 +10,7 @@ This directory is updated as we learn more. Prefer adding new files or sections 
 - [Win16 patches](win16-patches.md) — what the loader and cspec changes do, and how to apply them cleanly
 - [Launcher](launcher.md) — how `squirreldra` finds and starts Ghidra
 - [Workflow](workflow.md) — suggested order of operations for a ToolBook NE
+- [Debugging](debugging/) — Win98 / XP debugger notes and minimal user-mode starter
 
 ## Conventions
 

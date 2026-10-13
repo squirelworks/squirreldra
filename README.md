@@ -16,14 +16,15 @@ squirreldra/
 │   ├── lolcode/
 │   ├── piet/
 │   └── malbolge/
-└── documentation/          # living notes
+└── documentation/          # living notes (includes debugging/)
 ```
 
 ## Quick start
 
 ```bash
-export GHIDRA_HOME=/path/to/ghidra_12.3_DEV
+export GHIDRA_HOME=/path/to/ghidra
 ./squirreldra
 ```
 
 Language-specific patches, scripts, and stubs live under `vanguards/`.
+Debugging notes for Win98/XP live under `documentation/debugging/`.
