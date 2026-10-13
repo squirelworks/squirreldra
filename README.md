@@ -15,7 +15,13 @@ squirreldra/
 │   ├── scripts/
 │   ├── notes/
 │   └── sigs/
-└── documentation/          # living notes
+├── documentation/          # living notes
+├── brainfuck/               # eight-command decompiling vanguard
+├── intercal/                # COME FROM and politeness
+├── whitespace/              # invisible source
+├── lolcode/                 # HAI / KTHXBYE
+├── piet/                    # programs as paintings
+└── malbolge/                # refuses to decompile
 ```
 
 ## Quick start
@@ -25,4 +31,8 @@ export GHIDRA_HOME=/path/to/ghidra_12.3_DEV
 ./squirreldra
 ```
 
-Win16 patches and the `Win16NEFixes` script live under `win16/`.
+## Contents
+
+- **win16/** — loader fixes, Pascal prototypes, ordinal maps, and `Win16NEFixes`
+- **delphi567/** — empty scaffold for Delphi 5/6/7 helpers
+- **brainfuck/**, **intercal/**, **whitespace/**, **lolcode/**, **piet/**, **malbolge/** — stub Ghidra scripts that acknowledge the language and then stop
