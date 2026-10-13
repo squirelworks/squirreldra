@@ -70,9 +70,27 @@ def find_ghidra(ghidra_home=None):
         os.environ.get("GHIDRA_INSTALL_DIR", ""),
     ]
     for c in candidates:
-        run = os.path.join(c, "Ghidra", "RuntimeScripts", "Linux", "ghidraRun")
-        if os.path.isfile(run):
+        if not c or not os.path.isdir(c):
+            continue
+        # Distribution layout: ghidraRun at the top level
+        if os.path.isfile(os.path.join(c, "ghidraRun")):
             return c
+        # Source-tree layout: Ghidra/RuntimeScripts/Linux/ghidraRun
+        if os.path.isfile(os.path.join(c, "Ghidra", "RuntimeScripts", "Linux", "ghidraRun")):
+            return c
+    return None
+
+
+def locate_ghidra_run(ghidra_home):
+    """Return the path to ghidraRun for either a distribution or a source tree."""
+    # Distribution layout
+    dist = os.path.join(ghidra_home, "ghidraRun")
+    if os.path.isfile(dist):
+        return dist
+    # Source-tree layout
+    src = os.path.join(ghidra_home, "Ghidra", "RuntimeScripts", "Linux", "ghidraRun")
+    if os.path.isfile(src):
+        return src
     return None
 
 
@@ -85,11 +103,12 @@ def main():
         print("Could not locate Ghidra. Set GHIDRA_HOME or place it next to this launcher.")
         sys.exit(1)
 
-    run_script = os.path.join(
-        ghidra_home, "Ghidra", "RuntimeScripts", "Linux", "ghidraRun"
-    )
-    if not os.path.isfile(run_script):
-        print(f"ghidraRun not found at {run_script}")
+    run_script = locate_ghidra_run(ghidra_home)
+    if not run_script:
+        print(f"ghidraRun not found under {ghidra_home}")
+        print("Expected either:")
+        print("  - <GHIDRA_HOME>/ghidraRun  (extracted distribution)")
+        print("  - <GHIDRA_HOME>/Ghidra/RuntimeScripts/Linux/ghidraRun  (source tree)")
         sys.exit(1)
 
     # Pass through any extra args
