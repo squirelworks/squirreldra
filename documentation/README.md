@@ -10,7 +10,9 @@ This directory is updated as we learn more. Prefer adding new files or sections 
 - [Win16 patches](win16-patches.md) — what the loader and cspec changes do, and how to apply them cleanly
 - [Launcher](launcher.md) — how `squirreldra` finds and starts Ghidra
 - [Workflow](workflow.md) — suggested order of operations for a ToolBook NE
-- [Debugging](debugging/) — Win98 / XP debugger notes and minimal user-mode starter
+- [TBpipeline improvements](TBpipeline_improvements.md) — notes on dynamic analysis
+
+Debugging notes and the minidbg scaffold live at the top level under `../debugging/`.
 
 ## Conventions
 
