@@ -21,7 +21,7 @@ import ghidra.app.script.GhidraScript;
 import ghidra.program.model.symbol.*;
 import ghidra.program.model.data.*;
 import ghidra.program.model.listing.*;
-import ghidra.program.model.lang.PrototypeModel;
+import ghidra.program.model.scalar.Scalar;
 import java.io.*;
 import java.util.*;
 
@@ -59,9 +59,12 @@ public class Win16NEFixes extends GhidraScript {
 
     private Map<String, Map<Integer, String>> loadOrdinalMap() {
         Map<String, Map<Integer, String>> mapping = new HashMap<>();
-        File mapFile = new File(sourceFile.getParentFile(), "win16-ordinals.txt");
-        if (!mapFile.exists()) {
-            println("Ordinal map not found at " + mapFile + " — skipping rename step");
+        File mapFile = null;
+        if (sourceFile != null && sourceFile.getFile(false) != null) {
+            mapFile = new File(sourceFile.getFile(false).getParentFile(), "win16-ordinals.txt");
+        }
+        if (mapFile == null || !mapFile.exists()) {
+            println("Ordinal map not found next to script — place win16-ordinals.txt beside Win16NEFixes.java");
             return mapping;
         }
 
@@ -103,7 +106,7 @@ public class Win16NEFixes extends GhidraScript {
             if (ns == null) continue;
             for (Map.Entry<Integer, String> ordEntry : entry.getValue().entrySet()) {
                 String ordinalName = "Ordinal_" + ordEntry.getKey();
-                Symbol[] symbols = symtab.getSymbols(ordinalName, ns);
+                java.util.List<Symbol> symbols = symtab.getSymbols(ordinalName, ns);
                 for (Symbol sym : symbols) {
                     try {
                         sym.setName(ordEntry.getValue(), SourceType.IMPORTED);
@@ -120,7 +123,7 @@ public class Win16NEFixes extends GhidraScript {
 
     private void applyPascalFar() throws Exception {
         try {
-            currentProgram.getLanguage().getCompilerSpec().getCallingConvention("__pascal16far");
+            currentProgram.getCompilerSpec().getCallingConvention("__pascal16far");
         } catch (Exception e) {
             println("__pascal16far prototype not found in compiler spec — skipping");
             return;
@@ -166,7 +169,8 @@ public class Win16NEFixes extends GhidraScript {
                         long seg = (v >> 16) & 0xFFFF;
                         long off = v & 0xFFFF;
                         if (seg != 0 && off < 0x10000) {
-                            data.setDataType(ptr32, SourceType.ANALYSIS);
+                            listing.clearCodeUnits(data.getMinAddress(), data.getMaxAddress(), false);
+                            listing.createData(data.getMinAddress(), ptr32);
                             promoted++;
                         }
                     }
