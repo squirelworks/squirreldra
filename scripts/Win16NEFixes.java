@@ -5,17 +5,12 @@
 // 1. Renames Ordinal_N symbols in KERNEL / USER / GDI (and similar) namespaces
 //    using the maps in win16-ordinals.txt.
 // 2. Applies the __pascal16far calling convention to known Win16 API functions
-//    when that prototype exists in the current compiler spec.
+//    and to every external function in the system modules.
 // 3. Promotes selected data that looks like far pointers to a 4-byte pointer type.
 //
 // Usage:
 // - Copy this script and win16-ordinals.txt into a Ghidra scripts directory.
 // - Open an NE binary, then run from the Script Manager.
-//
-// Limitations:
-// - Requires the __pascal16far prototype to have been added to x86-16.cspec.
-// - Far-pointer promotion is heuristic; review results.
-// - Ordinal maps are partial.
 
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.symbol.*;
@@ -32,12 +27,27 @@ public class Win16NEFixes extends GhidraScript {
     };
 
     private static final Set<String> PASCAL_FAR_APIS = new HashSet<>(Arrays.asList(
-        "MessageBox", "GetWindowText", "SetWindowText", "SendMessage", "PostMessage",
-        "CreateWindow", "CreateWindowEx", "DefWindowProc", "DialogBox", "GetDlgItem",
-        "LoadString", "LoadIcon", "LoadCursor", "LoadBitmap", "TextOut", "ExtTextOut",
-        "SelectObject", "DeleteObject", "GetStockObject", "BitBlt", "PatBlt",
-        "GlobalAlloc", "GlobalLock", "GlobalUnlock", "GlobalFree",
-        "LocalAlloc", "LocalLock", "LocalUnlock", "LocalFree"
+        "MessageBox", "MessageBoxEx", "GetWindowText", "SetWindowText", "GetWindowTextLength",
+        "SendMessage", "PostMessage", "SendDlgItemMessage", "CreateWindow", "CreateWindowEx",
+        "DefWindowProc", "DialogBox", "DialogBoxParam", "GetDlgItem", "GetDlgItemText", "SetDlgItemText",
+        "LoadString", "LoadIcon", "LoadCursor", "LoadBitmap", "LoadMenu", "LoadAccelerators",
+        "GetFocus", "SetFocus", "GetActiveWindow", "SetActiveWindow", "GetCapture", "SetCapture",
+        "ReleaseCapture", "IsWindow", "IsChild", "IsWindowVisible", "IsWindowEnabled",
+        "ClientToScreen", "ScreenToClient", "WindowFromPoint", "GetWindowWord", "SetWindowWord",
+        "GetWindowLong", "SetWindowLong", "GetClassWord", "SetClassWord", "GetClassLong", "SetClassLong",
+        "GetDesktopWindow", "GetParent", "SetParent", "GetWindow", "GetNextWindow", "GetTopWindow",
+        "GetClientRect", "GetWindowRect", "AdjustWindowRect", "AdjustWindowRectEx",
+        "TextOut", "ExtTextOut", "TabbedTextOut", "GetTextExtent", "GetTextExtentEx",
+        "SelectObject", "DeleteObject", "GetStockObject", "GetObject", "BitBlt", "PatBlt",
+        "CreatePen", "CreatePenIndirect", "CreateSolidBrush", "CreateHatchBrush", "CreatePatternBrush",
+        "CreateBrushIndirect", "CreateBitmap", "CreateBitmapIndirect", "CreateCompatibleBitmap",
+        "CreateDIBitmap", "GetTextMetrics", "GetTextFace", "SetTextAlign", "SetTextColor",
+        "SetBkColor", "SetBkMode",
+        "GlobalAlloc", "GlobalReAlloc", "GlobalFree", "GlobalLock", "GlobalUnlock", "GlobalSize",
+        "LocalAlloc", "LocalReAlloc", "LocalFree", "LocalLock", "LocalUnlock", "LocalSize",
+        "GetProcAddress", "GetModuleHandle", "GetModuleFileName", "LoadLibrary", "FreeLibrary",
+        "GetWindowsDirectory", "GetSystemDirectory", "GetTempFileName", "GetFreeSpace",
+        "InitTask", "WaitEvent", "PostEvent", "MakeProcInstance", "FreeProcInstance"
     ));
 
     @Override
@@ -46,14 +56,11 @@ public class Win16NEFixes extends GhidraScript {
             println("No program open");
             return;
         }
-
         println("=== Win16 NE Fixes ===");
-
         Map<String, Map<Integer, String>> ordinalMap = loadOrdinalMap();
         renameOrdinals(ordinalMap);
         applyPascalFar();
         promoteFarPointers();
-
         println("Done.");
     }
 
@@ -67,7 +74,6 @@ public class Win16NEFixes extends GhidraScript {
             println("Ordinal map not found next to script — place win16-ordinals.txt beside Win16NEFixes.java");
             return mapping;
         }
-
         String currentModule = null;
         try (BufferedReader br = new BufferedReader(new FileReader(mapFile))) {
             String line;
@@ -128,24 +134,39 @@ public class Win16NEFixes extends GhidraScript {
             println("__pascal16far prototype not found in compiler spec — skipping");
             return;
         }
-
         FunctionManager funcMgr = currentProgram.getFunctionManager();
+        SymbolTable symtab = currentProgram.getSymbolTable();
         int applied = 0;
         FunctionIterator funcs = funcMgr.getFunctions(true);
         while (funcs.hasNext()) {
             Function func = funcs.next();
-            String name = func.getName();
-            if (PASCAL_FAR_APIS.contains(name)) {
-                try {
-                    func.setCallingConvention("__pascal16far");
-                    applied++;
-                    println("Set " + name + " to __pascal16far");
-                } catch (Exception e) {
-                    println("Failed to set convention on " + name + ": " + e.getMessage());
+            if (PASCAL_FAR_APIS.contains(func.getName())) {
+                if (trySetPascal(func)) applied++;
+            }
+        }
+        for (String module : SYSTEM_MODULES) {
+            Namespace ns = symtab.getNamespace(module, null);
+            if (ns == null) continue;
+            for (Symbol sym : symtab.getSymbols(ns)) {
+                if (sym.getSymbolType() != SymbolType.FUNCTION) continue;
+                Function func = funcMgr.getFunctionAt(sym.getAddress());
+                if (func != null && func.isExternal()) {
+                    if (trySetPascal(func)) applied++;
                 }
             }
         }
         println("Applied __pascal16far to " + applied + " functions");
+    }
+
+    private boolean trySetPascal(Function func) {
+        try {
+            func.setCallingConvention("__pascal16far");
+            println("Set " + func.getName() + " to __pascal16far");
+            return true;
+        } catch (Exception e) {
+            println("Failed to set convention on " + func.getName() + ": " + e.getMessage());
+            return false;
+        }
     }
 
     private void promoteFarPointers() throws Exception {
@@ -156,7 +177,6 @@ public class Win16NEFixes extends GhidraScript {
         } catch (Exception e) {
             ptr32 = PointerDataType.dataType;
         }
-
         int promoted = 0;
         DataIterator dataIter = listing.getDefinedData(true);
         while (dataIter.hasNext()) {
