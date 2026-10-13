@@ -2,15 +2,11 @@
 // Ghidra Java script
 //
 // What it does:
-// 1. Renames Ordinal_N symbols in KERNEL / USER / GDI (and similar) namespaces
+// 1. Renames Ordinal_N symbols and normalizes case of already-named symbols
 //    using the maps in win16-ordinals.txt.
 // 2. Applies the __pascal16far calling convention to known Win16 API functions
 //    and to every external function in the system modules.
 // 3. Promotes selected data that looks like far pointers to a 4-byte pointer type.
-//
-// Usage:
-// - Copy this script and win16-ordinals.txt into a Ghidra scripts directory.
-// - Open an NE binary, then run from the Script Manager.
 
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.symbol.*;
@@ -110,21 +106,42 @@ public class Win16NEFixes extends GhidraScript {
             String module = entry.getKey();
             Namespace ns = symtab.getNamespace(module, null);
             if (ns == null) continue;
+
+            Map<String, String> preferred = new HashMap<>();
             for (Map.Entry<Integer, String> ordEntry : entry.getValue().entrySet()) {
-                String ordinalName = "Ordinal_" + ordEntry.getKey();
-                java.util.List<Symbol> symbols = symtab.getSymbols(ordinalName, ns);
-                for (Symbol sym : symbols) {
+                preferred.put(ordEntry.getValue().toLowerCase(), ordEntry.getValue());
+            }
+
+            for (Symbol sym : symtab.getSymbols(ns)) {
+                String current = sym.getName();
+                String lower = current.toLowerCase();
+
+                if (current.startsWith("Ordinal_")) {
                     try {
-                        sym.setName(ordEntry.getValue(), SourceType.IMPORTED);
+                        int ord = Integer.parseInt(current.substring(8));
+                        String preferredName = entry.getValue().get(ord);
+                        if (preferredName != null && !preferredName.equals(current)) {
+                            sym.setName(preferredName, SourceType.IMPORTED);
+                            renamed++;
+                            println("Renamed " + module + "!" + current + " -> " + preferredName);
+                        }
+                    } catch (NumberFormatException ignored) {}
+                    continue;
+                }
+
+                String preferredName = preferred.get(lower);
+                if (preferredName != null && !preferredName.equals(current)) {
+                    try {
+                        sym.setName(preferredName, SourceType.IMPORTED);
                         renamed++;
-                        println("Renamed " + module + "!" + ordinalName + " -> " + ordEntry.getValue());
+                        println("Normalized " + module + "!" + current + " -> " + preferredName);
                     } catch (Exception e) {
-                        println("Failed to rename " + module + "!" + ordinalName + ": " + e.getMessage());
+                        println("Failed to normalize " + module + "!" + current + ": " + e.getMessage());
                     }
                 }
             }
         }
-        println("Renamed " + renamed + " ordinals");
+        println("Renamed/normalized " + renamed + " symbols");
     }
 
     private void applyPascalFar() throws Exception {
