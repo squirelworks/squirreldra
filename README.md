@@ -1,44 +1,54 @@
 # Squirreldra
 
-Thin launcher and ToolBook/Win16 workflow layer on top of Ghidra.
+Personal tools, fixes, and patches for Win16 / ToolBook analysis on top of Ghidra.
 
 ## What it does
 
 - Shows a short “Squirreldra” splash screen
-- Starts Ghidra (headless or GUI)
-- Ships the Win16 Pascal prototypes patch, ordinal maps, and helper script
+- Starts Ghidra (distribution or source-tree layout)
+- Ships Win16 loader fixes, Pascal calling-convention prototypes, ordinal maps, and a helper script
 
 ## Layout
 
 ```
 squirreldra/
-├── squirreldra              # launcher (Python)
+├── squirreldra                          # launcher
 ├── scripts/
 │   ├── Win16NEFixes.py
 │   └── win16-ordinals.txt
 ├── patches/
-│   └── ghidra-win16-pascal-only.patch
+│   ├── ghidra-win16-fixes.patch          # loader + Pascal prototypes
+│   └── ghidra-win16-pascal-only.patch    # Pascal prototypes only
 └── docs/
+    └── README-win16-fixes.md
 ```
 
 ## Quick start
 
 ```bash
-# Point at your Ghidra install / build
-export GHIDRA_HOME=~/ghidra-win16/ghidra
+# Point at an extracted Ghidra distribution or a source tree
+export GHIDRA_HOME=~/ghidra-win16/ghidra/build/dist/ghidra_12.3_DEV
 
 # Run
 ./squirreldra
 ```
 
-Or place the `squirreldra` script next to a `ghidra/` directory and run it directly.
+## Applying the patches
+
+See `docs/README-win16-fixes.md` for details.
+
+```bash
+cd /path/to/ghidra
+git apply /path/to/squirreldra/patches/ghidra-win16-fixes.patch
+./gradlew buildGhidra
+```
 
 ## Requirements
 
 - Python 3
-- tkinter (optional; falls back to a terminal banner if missing)
-- A Ghidra build that includes the Pascal prototypes (see `patches/`)
+- tkinter (optional; falls back to a terminal banner)
+- A Ghidra build
 
 ## Notes
 
-This is a scaffold. The launcher does not yet embed Ghidra or implement custom views; it only provides the splash and a clean entry point for the ToolBook/Win16 workflow.
+This is the repository for our personal Ghidra tools, loader fixes, and Win16 analysis helpers. The launcher does not embed Ghidra; it only provides the splash and a clean entry point.
