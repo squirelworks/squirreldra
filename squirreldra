@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""
+Squirreldra launcher
+Shows a short splash screen, then starts Ghidra.
+"""
+
+import os
+import sys
+import subprocess
+import time
+
+try:
+    import tkinter as tk
+    from tkinter import font as tkfont
+    HAS_TK = True
+except ImportError:
+    HAS_TK = False
+
+
+def show_splash(duration=2.0):
+    if not HAS_TK:
+        print("\n" + "=" * 40)
+        print("          Squirreldra")
+        print("=" * 40 + "\n")
+        time.sleep(duration)
+        return
+
+    root = tk.Tk()
+    root.overrideredirect(True)
+    root.attributes("-topmost", True)
+    root.configure(bg="#1e1e2e")
+
+    # Center the window
+    w, h = 420, 180
+    sw = root.winfo_screenwidth()
+    sh = root.winfo_screenheight()
+    root.geometry(f"{w}x{h}+{(sw - w) // 2}+{(sh - h) // 2}")
+
+    title_font = tkfont.Font(family="Helvetica", size=28, weight="bold")
+    sub_font = tkfont.Font(family="Helvetica", size=11)
+
+    tk.Label(
+        root,
+        text="Squirreldra",
+        font=title_font,
+        fg="#cdd6f4",
+        bg="#1e1e2e",
+    ).pack(expand=True)
+
+    tk.Label(
+        root,
+        text="Win16 / ToolBook analysis",
+        font=sub_font,
+        fg="#a6adc8",
+        bg="#1e1e2e",
+    ).pack(pady=(0, 20))
+
+    root.update()
+    root.after(int(duration * 1000), root.destroy)
+    root.mainloop()
+
+
+def find_ghidra(ghidra_home=None):
+    if ghidra_home:
+        return ghidra_home
+    # Look next to this script, or in common locations
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "ghidra"),
+        os.path.expanduser("~/ghidra-win16/ghidra"),
+        os.environ.get("GHIDRA_INSTALL_DIR", ""),
+    ]
+    for c in candidates:
+        run = os.path.join(c, "Ghidra", "RuntimeScripts", "Linux", "ghidraRun")
+        if os.path.isfile(run):
+            return c
+    return None
+
+
+def main():
+    duration = float(os.environ.get("SQUIRRELDRA_SPLASH", "2.0"))
+    show_splash(duration)
+
+    ghidra_home = find_ghidra(os.environ.get("GHIDRA_HOME"))
+    if not ghidra_home:
+        print("Could not locate Ghidra. Set GHIDRA_HOME or place it next to this launcher.")
+        sys.exit(1)
+
+    run_script = os.path.join(
+        ghidra_home, "Ghidra", "RuntimeScripts", "Linux", "ghidraRun"
+    )
+    if not os.path.isfile(run_script):
+        print(f"ghidraRun not found at {run_script}")
+        sys.exit(1)
+
+    # Pass through any extra args
+    cmd = [run_script] + sys.argv[1:]
+    os.execv(run_script, cmd)
+
+
+if __name__ == "__main__":
+    main()
