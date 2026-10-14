@@ -5,19 +5,21 @@
 // Patterns:
 //   55 8B EC              PUSH BP / MOV BP,SP
 //   45 55 8B EC 1E 8E D8  INC BP / PUSH BP / MOV BP,SP / PUSH DS / MOV DS,AX
-//   byte after C3 (RET) or CB (RETF) in an undefined run
-//   every NE entry table address
+//   instruction after a real RET/RETF instruction (not just the byte)
+//   NE entry-table symbols that still have no function
 //
 // Run from Script Manager after the C8 pass.
 
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolIterator;
 import ghidra.program.model.symbol.SymbolTable;
+import ghidra.program.model.symbol.SymbolType;
 
 public class ForceDisassemblePrologues extends GhidraScript {
 
@@ -72,15 +74,21 @@ public class ForceDisassemblePrologues extends GhidraScript {
                 export++;
                 hit = true;
             }
-            // after RET / RETF
+            // after a real RET / RETF instruction (not just the byte in data)
             else if (a.getOffset() > 0) {
                 try {
                     Address prev = a.subtract(1);
-                    byte[] pb = new byte[1];
-                    if (memory.getBytes(prev, pb) == 1 &&
-                        (pb[0] == (byte)0xC3 || pb[0] == (byte)0xCB)) {
-                        afterRet++;
-                        hit = true;
+                    Instruction prevInsn = listing.getInstructionAt(prev);
+                    if (prevInsn == null) {
+                        // the RET may start earlier; check the previous code unit
+                        prevInsn = listing.getInstructionContaining(prev);
+                    }
+                    if (prevInsn != null) {
+                        String mnem = prevInsn.getMnemonicString();
+                        if ("RET".equals(mnem) || "RETF".equals(mnem)) {
+                            afterRet++;
+                            hit = true;
+                        }
                     }
                 } catch (Exception ex) {
                     // off the end of a block
@@ -99,24 +107,30 @@ public class ForceDisassemblePrologues extends GhidraScript {
             a = a.next();
         }
 
-        // NE entry table: any symbol whose address has no function
+        // Symbols that look like entry points (FUNCTION symbols or names starting with Ordinal_)
+        // that still have no function.
         SymbolTable st = currentProgram.getSymbolTable();
         SymbolIterator it = st.getAllSymbols(true);
         while (it.hasNext()) {
             if (monitor.isCancelled()) break;
             Symbol s = it.next();
             Address ea = s.getAddress();
-            if (listing.getFunctionAt(ea) == null) {
-                try {
-                    disassemble(ea);
-                    Function f = createFunction(ea, s.getName());
-                    if (f != null) {
-                        entries++;
-                        created++;
-                    }
-                } catch (Exception ex) {
-                    // skip
+            if (listing.getFunctionAt(ea) != null) continue;
+
+            boolean isEntry = s.getSymbolType() == SymbolType.FUNCTION
+                    || s.getName().startsWith("Ordinal_")
+                    || s.getName().startsWith("entry_");
+            if (!isEntry) continue;
+
+            try {
+                disassemble(ea);
+                Function f = createFunction(ea, s.getName());
+                if (f != null) {
+                    entries++;
+                    created++;
                 }
+            } catch (Exception ex) {
+                // skip
             }
         }
 
