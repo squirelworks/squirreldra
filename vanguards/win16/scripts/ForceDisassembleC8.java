@@ -6,9 +6,7 @@
 
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.listing.Function;
-import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.mem.Memory;
 import ghidra.program.model.mem.MemoryBlock;
 
@@ -33,8 +31,6 @@ public class ForceDisassembleC8 extends GhidraScript {
                         byte b = mem.getByte(addr);
                         if (b == (byte) 0xC8) {
                             found++;
-                            // Force disassemble
-                            AddressSet set = new AddressSet(addr, addr.add(1));
                             disassemble(addr);
                             // Create function if none exists
                             Function f = getFunctionContaining(addr);
