@@ -11,3 +11,10 @@ Loader fixes, Pascal calling-convention prototypes, ordinal maps, and the `Win16
 - `x86-16-pascal-prototypes.xml` — calling-convention prototypes
 
 See `docs/README-win16-fixes.md` for how to apply the patches and run the script.
+
+## Force-disassemble helpers
+
+- `ForceDisassembleC8.java` — force disassembly on every undefined `C8` (ENTER)
+- `ForceDisassemblePrologues.java` — classic prologues, Win16 export prologues, post-RET, and NE entry points
+
+Run C8 first, then Prologues. Both print the number of functions created. See the matching .md file next to each script for the rationale.
